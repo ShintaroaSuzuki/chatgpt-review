@@ -177,7 +177,7 @@ func main() {
 		panic(err)
 	}
 
-	token := os.Getenv("GITHUB_TOKEN")
+	token := os.Getenv("INPUT_GITHUB_TOKEN")
 	if token == "" {
 		panic("GITHUB_TOKEN environment variable must be set")
 	}
