@@ -2,6 +2,9 @@ name: "ChatGPT Review"
 author: "ShintaroaSuzuki"
 description: ""
 inputs:
+  github_token:
+    description: "GITHUB TOKEN"
+    required: true
   openai_api_key:
     description: "OPENAI API KEY"
     required: true
