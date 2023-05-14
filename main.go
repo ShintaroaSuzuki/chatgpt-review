@@ -28,10 +28,34 @@ type ChatGPTResponse struct {
 	Message string `json:"message"`
 }
 
-func GetGitDiffOutput() ([]byte, error) {
-	baseBranch := os.Getenv("GITHUB_BASE_REF")
+func GitClone(owner string, repo string, token string) error {
+	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s", owner, token, repo)
+	cmd := exec.Command("git", "clone", cloneURL)
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
-	reviewIgnorePath := ".review-ignore"
+func CdRepository(repo string) error {
+	err := os.Chdir(repo)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GitFetch() error {
+	cmd := exec.Command("git", "fetch", "origin")
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func GetGitDiffOutput(headBranch string, baseBranch string, reviewIgnorePath string) ([]byte, error) {
 	var patterns []string
 	if _, err := os.Stat(reviewIgnorePath); !os.IsNotExist(err) {
 		content, err := os.ReadFile(reviewIgnorePath)
@@ -41,7 +65,7 @@ func GetGitDiffOutput() ([]byte, error) {
 		patterns = strings.Split(string(content), "\n")
 	}
 
-	cmd := exec.Command("git", "diff", "HEAD", baseBranch, "--", ".")
+	cmd := exec.Command("git", "diff", fmt.Sprintf("origin/%s", headBranch), fmt.Sprintf("origin/%s", baseBranch), "--", ".")
 	if len(patterns) > 0 {
 		var args []string
 		for _, pattern := range patterns {
@@ -59,15 +83,10 @@ func GetGitDiffOutput() ([]byte, error) {
 	return out, nil
 }
 
-func GetChatGptResponse(diff []byte) ([]byte, error) {
-	endpoint := "https://api.openai.com/v1/engines/davinci/completions"
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		panic("OPENAI_API_KEY environment variable must be set")
-	}
+func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byte) ([]byte, error) {
 
 	chatGPTRequest := ChatGPTRequest{
-		Model: "gpt-3.5-turbo",
+		Model: model,
 		Messages: []Prompt{
 			{
 				Content: fmt.Sprintf("Please review the following code. You are an excellent software engineer.\n```\n%s\n```", string(diff)),
@@ -131,22 +150,7 @@ func GetPRNumber() (int, error) {
 	return prNumber, nil
 }
 
-func PostPRComment(content string) (*github.Response, error) {
-	token := os.Getenv("GITHUB_TOKEN")
-	if token == "" {
-		return nil, fmt.Errorf("GITHUB_TOKEN environment variable must be set")
-	}
-
-	owner, name, err := GetOwnerAndName()
-	if err != nil {
-		return nil, err
-	}
-
-	prNumber, err := GetPRNumber()
-	if err != nil {
-		return nil, err
-	}
-
+func PostPRComment(owner string, repo string, prNumber int, content string, token string) (*github.Response, error) {
 	ctx := context.Background()
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: token},
@@ -158,7 +162,7 @@ func PostPRComment(content string) (*github.Response, error) {
 		Body: github.String(content),
 	}
 
-	_, resp, err := client.PullRequests.CreateComment(ctx, owner, name, prNumber, comment)
+	_, resp, err := client.PullRequests.CreateComment(ctx, owner, repo, prNumber, comment)
 
 	if err != nil {
 		return nil, err
@@ -168,21 +172,67 @@ func PostPRComment(content string) (*github.Response, error) {
 }
 
 func main() {
-	diff, err := GetGitDiffOutput()
+	owner, repo, err := GetOwnerAndName()
 	if err != nil {
 		panic(err)
 	}
 
-	chatGPTResponse, err := GetChatGptResponse(diff)
+	token := os.Getenv("GITHUB_TOKEN")
+	if token == "" {
+		panic("GITHUB_TOKEN environment variable must be set")
+	}
+
+	err = GitClone(owner, repo, token)
+	if err != nil {
+		panic(err)
+	}
+
+	err = CdRepository(repo)
+	if err != nil {
+		panic(err)
+	}
+
+	headBranch := os.Getenv("GITHUB_HEAD_REF")
+	if headBranch == "" {
+		panic("GITHUB_HEAD_REF environment variable must be set")
+	}
+
+	baseBranch := os.Getenv("GITHUB_BASE_REF")
+	if baseBranch == "" {
+		panic("GITHUB_BASE_REF environment variable must be set")
+	}
+
+	reviewIgnorePath := os.Getenv("INPUT_REVIEW_IGNORE_PATH")
+	if reviewIgnorePath == "" {
+		reviewIgnorePath = ".review-ignore"
+	}
+
+	diff, err := GetGitDiffOutput(headBranch, baseBranch, reviewIgnorePath)
+	if err != nil {
+		panic(err)
+	}
+
+	endpoint := "https://api.openai.com/v1/chat/completions"
+	model := "gpt-3.5-turbo"
+	apiKey := os.Getenv("INPUT_OPENAI_API_KEY")
+	if apiKey == "" {
+		panic("OPENAI_API_KEY environment variable must be set")
+	}
+
+	chatGPTResponse, err := GetChatGptResponse(endpoint, model, apiKey, diff)
 	if err != nil {
 		panic(err)
 	}
 
 	comment := fmt.Sprintf("## Review\n\n%s", string(chatGPTResponse))
 
-	_, err = PostPRComment(comment)
+	prNumber, err := GetPRNumber()
 	if err != nil {
 		panic(err)
 	}
 
+	_, err = PostPRComment(owner, repo, prNumber, comment, token)
+	if err != nil {
+		panic(err)
+	}
 }
