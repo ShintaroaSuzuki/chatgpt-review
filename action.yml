@@ -2,6 +2,9 @@ name: "ChatGPT Review"
 author: "ShintaroaSuzuki"
 description: ""
 inputs:
+  github_token:
+    description: "GITHUB TOKEN"
+    required: true
   openai_api_key:
     description: "OPENAI API KEY"
     required: true
@@ -11,8 +14,6 @@ inputs:
 runs:
   using: "docker"
   image: "Dockerfile"
-  env:
-    GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 branding:
   icon: "message-circle"
   color: "gray-dark"
