@@ -232,6 +232,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("diff: ", string(diff))
 
 	endpoint := "https://api.openai.com/v1/chat/completions"
 	model := "gpt-3.5-turbo"
