@@ -30,6 +30,7 @@ type ChatGPTResponse struct {
 
 func GitClone(owner string, repo string, token string) error {
 	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s", owner, token, repo)
+	fmt.Println(cloneURL)
 	cmd := exec.Command("git", "clone", cloneURL)
 	err := cmd.Run()
 	if err != nil {
@@ -128,11 +129,6 @@ func SplitRepositoryName(repo string) (string, string, error) {
 	return split[0], split[1], nil
 }
 
-func GetOwnerAndName() (string, string, error) {
-	repo := os.Getenv("GITHUB_REPOSITORY")
-	return SplitRepositoryName(repo)
-}
-
 func GetPRNumber() (int, error) {
 	eventPath := os.Getenv("GITHUB_EVENT_PATH")
 
@@ -172,7 +168,8 @@ func PostPRComment(owner string, repo string, prNumber int, content string, toke
 }
 
 func main() {
-	owner, repo, err := GetOwnerAndName()
+	githubRepository := os.Getenv("GITHUB_REPOSITORY")
+	owner, repo, err := SplitRepositoryName(githubRepository)
 	if err != nil {
 		panic(err)
 	}
