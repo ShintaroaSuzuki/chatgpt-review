@@ -26,7 +26,23 @@ type ChatGPTRequest struct {
 }
 
 type ChatGPTResponse struct {
-	Message string `json:"message"`
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	Model   string `json:"model"`
+	Usage   struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
+	Choices []struct {
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
+		Index        int    `json:"index"`
+	} `json:"choices"`
 }
 
 func GitClone(owner string, repo string, token string) error {
@@ -119,16 +135,14 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("body: ", string(body))
 
 	var chatGPTResponse ChatGPTResponse
 	err = json.Unmarshal(body, &chatGPTResponse)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("chatGPTResponse: ", chatGPTResponse)
 
-	return []byte(chatGPTResponse.Message), nil
+	return []byte(chatGPTResponse.Choices[0].Message.Content), nil
 }
 
 func SplitRepositoryName(repo string) (string, string, error) {
