@@ -154,11 +154,11 @@ func PostPRComment(owner string, repo string, prNumber int, content string, toke
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	comment := &github.PullRequestComment{
+	comment := &github.IssueComment{
 		Body: github.String(content),
 	}
 
-	_, resp, err := client.PullRequests.CreateComment(ctx, owner, repo, prNumber, comment)
+	_, resp, err := client.Issues.CreateComment(ctx, owner, repo, prNumber, comment)
 
 	if err != nil {
 		return nil, err
