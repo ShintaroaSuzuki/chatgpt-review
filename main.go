@@ -29,7 +29,7 @@ type ChatGPTResponse struct {
 }
 
 func GitClone(owner string, repo string, token string) error {
-	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s", owner, token, repo)
+	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s/%s", owner, token, owner, repo)
 	fmt.Println(cloneURL)
 	cmd := exec.Command("git", "clone", cloneURL)
 	err := cmd.Run()
