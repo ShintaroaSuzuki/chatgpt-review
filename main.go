@@ -100,12 +100,12 @@ func GetGitDiffOutput(headBranch string, baseBranch string, reviewIgnorePath str
 	return out, nil
 }
 
-func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byte) ([]byte, error) {
+func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byte, language string) ([]byte, error) {
 	chatGPTRequest := ChatGPTRequest{
 		Model: model,
 		Messages: []Prompt{
 			{
-				Content: fmt.Sprintf("Please review the following code. You are an excellent software engineer.\n```\n%s\n```", string(diff)),
+				Content: fmt.Sprintf("You are an excellent software engineer. Please review the code by looking at the output of the following `git diff`, and provide your response in %s.\n```\n%s\n```", language, string(diff)),
 				Role:    "user",
 			},
 		},
@@ -241,12 +241,17 @@ func main() {
 		panic("OPENAI_API_KEY environment variable must be set")
 	}
 
-	chatGPTResponse, err := GetChatGptResponse(endpoint, model, apiKey, diff)
+	language := os.Getenv("INPUT_LANGUAGE")
+	if language == "" {
+		language = "English"
+	}
+
+	chatGPTResponse, err := GetChatGptResponse(endpoint, model, apiKey, diff, language)
 	if err != nil {
 		panic(err)
 	}
 
-	comment := fmt.Sprintf("## Review\n\n%s", string(chatGPTResponse))
+	comment := fmt.Sprintf("## ChatGPT Review\n\n%s", string(chatGPTResponse))
 
 	prNumber, err := GetPRNumber()
 	if err != nil {

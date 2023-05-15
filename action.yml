@@ -11,6 +11,9 @@ inputs:
   review_ignore_path:
     description: "REVIEW IGNORE PATH"
     required: false
+  language:
+    description: "LANGUAGE"
+    required: false
 runs:
   using: "docker"
   image: "Dockerfile"
