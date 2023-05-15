@@ -105,7 +105,7 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 		Model: model,
 		Messages: []Prompt{
 			{
-				Content: fmt.Sprintf("You are an excellent software engineer. Please review the output of the following `git diff` and propose some refactoring. Please provide your response in %s using bullet points.\n```\n%s\n```", language, string(diff)),
+				Content: fmt.Sprintf("You are an excellent software engineer. Please propose some refactoring by looking at the output of the following `git diff`. Please provide your response in %s using bullet points.\n```\n%s\n```", language, string(diff)),
 				Role:    "user",
 			},
 		},
