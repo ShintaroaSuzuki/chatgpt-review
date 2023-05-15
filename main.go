@@ -119,12 +119,14 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("body: ", string(body))
 
 	var chatGPTResponse ChatGPTResponse
 	err = json.Unmarshal(body, &chatGPTResponse)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Println("chatGPTResponse: ", chatGPTResponse)
 
 	return []byte(chatGPTResponse.Message), nil
 }
