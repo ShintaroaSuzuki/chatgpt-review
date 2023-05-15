@@ -72,7 +72,7 @@ func GitFetch() error {
 	return nil
 }
 
-func GetGitDiffOutput(headBranch string, baseBranch string, reviewIgnorePath string) ([]byte, error) {
+func GetGitDiffOutput(baseBranch string, headBranch string, reviewIgnorePath string) ([]byte, error) {
 	var patterns []string
 	if _, err := os.Stat(reviewIgnorePath); !os.IsNotExist(err) {
 		content, err := os.ReadFile(reviewIgnorePath)
@@ -213,14 +213,14 @@ func main() {
 		panic(err)
 	}
 
-	headBranch := os.Getenv("GITHUB_HEAD_REF")
-	if headBranch == "" {
-		panic("GITHUB_HEAD_REF environment variable must be set")
-	}
-
 	baseBranch := os.Getenv("GITHUB_BASE_REF")
 	if baseBranch == "" {
 		panic("GITHUB_BASE_REF environment variable must be set")
+	}
+
+	headBranch := os.Getenv("GITHUB_HEAD_REF")
+	if headBranch == "" {
+		panic("GITHUB_HEAD_REF environment variable must be set")
 	}
 
 	reviewIgnorePath := os.Getenv("INPUT_REVIEW_IGNORE_PATH")
@@ -228,7 +228,7 @@ func main() {
 		reviewIgnorePath = ".review-ignore"
 	}
 
-	diff, err := GetGitDiffOutput(headBranch, baseBranch, reviewIgnorePath)
+	diff, err := GetGitDiffOutput(baseBranch, headBranch, reviewIgnorePath)
 	if err != nil {
 		panic(err)
 	}
