@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -114,8 +115,13 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
 	}
 
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
 	var chatGPTResponse ChatGPTResponse
-	err = json.NewDecoder(resp.Body).Decode(&chatGPTResponse)
+	err = json.Unmarshal(body, &chatGPTResponse)
 	if err != nil {
 		return nil, err
 	}
