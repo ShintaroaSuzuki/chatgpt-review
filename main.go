@@ -128,7 +128,7 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
+		return nil, fmt.Errorf("status code error: %d\n%s", resp.StatusCode, resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
