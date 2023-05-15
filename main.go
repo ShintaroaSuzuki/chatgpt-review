@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -25,11 +26,27 @@ type ChatGPTRequest struct {
 }
 
 type ChatGPTResponse struct {
-	Message string `json:"message"`
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	Model   string `json:"model"`
+	Usage   struct {
+		PromptTokens     int `json:"prompt_tokens"`
+		CompletionTokens int `json:"completion_tokens"`
+		TotalTokens      int `json:"total_tokens"`
+	} `json:"usage"`
+	Choices []struct {
+		Message struct {
+			Role    string `json:"role"`
+			Content string `json:"content"`
+		} `json:"message"`
+		FinishReason string `json:"finish_reason"`
+		Index        int    `json:"index"`
+	} `json:"choices"`
 }
 
 func GitClone(owner string, repo string, token string) error {
-	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s", owner, token, repo)
+	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s/%s", owner, token, owner, repo)
 	cmd := exec.Command("git", "clone", cloneURL)
 	err := cmd.Run()
 	if err != nil {
@@ -83,13 +100,12 @@ func GetGitDiffOutput(headBranch string, baseBranch string, reviewIgnorePath str
 	return out, nil
 }
 
-func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byte) ([]byte, error) {
-
+func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byte, language string) ([]byte, error) {
 	chatGPTRequest := ChatGPTRequest{
 		Model: model,
 		Messages: []Prompt{
 			{
-				Content: fmt.Sprintf("Please review the following code. You are an excellent software engineer.\n```\n%s\n```", string(diff)),
+				Content: fmt.Sprintf("You are an excellent software engineer. Please review the code by looking at the output of the following `git diff`, and provide your response in %s.\n```\n%s\n```", language, string(diff)),
 				Role:    "user",
 			},
 		},
@@ -111,13 +127,22 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 	}
 	defer resp.Body.Close()
 
-	var chatGPTResponse ChatGPTResponse
-	err = json.NewDecoder(resp.Body).Decode(&chatGPTResponse)
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status code error: %d\n%s", resp.StatusCode, resp.Status)
+	}
+
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
 
-	return []byte(chatGPTResponse.Message), nil
+	var chatGPTResponse ChatGPTResponse
+	err = json.Unmarshal(body, &chatGPTResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return []byte(chatGPTResponse.Choices[0].Message.Content), nil
 }
 
 func SplitRepositoryName(repo string) (string, string, error) {
@@ -126,11 +151,6 @@ func SplitRepositoryName(repo string) (string, string, error) {
 		return "", "", fmt.Errorf("invalid repository name: %s", repo)
 	}
 	return split[0], split[1], nil
-}
-
-func GetOwnerAndName() (string, string, error) {
-	repo := os.Getenv("GITHUB_REPOSITORY")
-	return SplitRepositoryName(repo)
 }
 
 func GetPRNumber() (int, error) {
@@ -158,11 +178,11 @@ func PostPRComment(owner string, repo string, prNumber int, content string, toke
 	tc := oauth2.NewClient(ctx, ts)
 	client := github.NewClient(tc)
 
-	comment := &github.PullRequestComment{
+	comment := &github.IssueComment{
 		Body: github.String(content),
 	}
 
-	_, resp, err := client.PullRequests.CreateComment(ctx, owner, repo, prNumber, comment)
+	_, resp, err := client.Issues.CreateComment(ctx, owner, repo, prNumber, comment)
 
 	if err != nil {
 		return nil, err
@@ -172,12 +192,13 @@ func PostPRComment(owner string, repo string, prNumber int, content string, toke
 }
 
 func main() {
-	owner, repo, err := GetOwnerAndName()
+	githubRepository := os.Getenv("GITHUB_REPOSITORY")
+	owner, repo, err := SplitRepositoryName(githubRepository)
 	if err != nil {
 		panic(err)
 	}
 
-	token := os.Getenv("GITHUB_TOKEN")
+	token := os.Getenv("INPUT_GITHUB_TOKEN")
 	if token == "" {
 		panic("GITHUB_TOKEN environment variable must be set")
 	}
@@ -211,6 +232,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("diff: ", string(diff))
 
 	endpoint := "https://api.openai.com/v1/chat/completions"
 	model := "gpt-3.5-turbo"
@@ -219,12 +241,17 @@ func main() {
 		panic("OPENAI_API_KEY environment variable must be set")
 	}
 
-	chatGPTResponse, err := GetChatGptResponse(endpoint, model, apiKey, diff)
+	language := os.Getenv("INPUT_LANGUAGE")
+	if language == "" {
+		language = "English"
+	}
+
+	chatGPTResponse, err := GetChatGptResponse(endpoint, model, apiKey, diff, language)
 	if err != nil {
 		panic(err)
 	}
 
-	comment := fmt.Sprintf("## Review\n\n%s", string(chatGPTResponse))
+	comment := fmt.Sprintf("## ChatGPT Review\n\n%s", string(chatGPTResponse))
 
 	prNumber, err := GetPRNumber()
 	if err != nil {
