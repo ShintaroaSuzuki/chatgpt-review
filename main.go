@@ -85,7 +85,6 @@ func GetGitDiffOutput(headBranch string, baseBranch string, reviewIgnorePath str
 }
 
 func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byte) ([]byte, error) {
-
 	chatGPTRequest := ChatGPTRequest{
 		Model: model,
 		Messages: []Prompt{
@@ -110,13 +109,14 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	var chatGPTResponse ChatGPTResponse
 	err = json.NewDecoder(resp.Body).Decode(&chatGPTResponse)
 	if err != nil {
 		return nil, err
 	}
+
+	defer resp.Body.Close()
 
 	return []byte(chatGPTResponse.Message), nil
 }
