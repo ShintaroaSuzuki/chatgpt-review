@@ -12,4 +12,6 @@ jobs:
       - name: ChatGPT Review
         uses: ShintaroaSuzuki/chatgpt-review@main
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           openai_api_key: ${{ secrets.OPENAI_API_KEY }}
+          language: "japanese"
