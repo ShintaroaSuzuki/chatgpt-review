@@ -30,7 +30,6 @@ type ChatGPTResponse struct {
 
 func GitClone(owner string, repo string, token string) error {
 	cloneURL := fmt.Sprintf("https://%s:%s@github.com/%s/%s", owner, token, owner, repo)
-	fmt.Println(cloneURL)
 	cmd := exec.Command("git", "clone", cloneURL)
 	err := cmd.Run()
 	if err != nil {
@@ -109,14 +108,17 @@ func GetChatGptResponse(endpoint string, model string, apiKey string, diff []byt
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("status code error: %d %s", resp.StatusCode, resp.Status)
+	}
 
 	var chatGPTResponse ChatGPTResponse
 	err = json.NewDecoder(resp.Body).Decode(&chatGPTResponse)
 	if err != nil {
 		return nil, err
 	}
-
-	defer resp.Body.Close()
 
 	return []byte(chatGPTResponse.Message), nil
 }
