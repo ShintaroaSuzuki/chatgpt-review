@@ -82,7 +82,7 @@ func GetGitDiffOutput(baseBranch string, headBranch string, reviewIgnorePath str
 		patterns = strings.Split(string(content), "\n")
 	}
 
-	cmd := exec.Command("git", "diff", fmt.Sprintf("origin/%s", baseBranch), fmt.Sprintf("origin/%s", headBranch), "--", ".")
+	cmdArgs := []string{"git", "diff", fmt.Sprintf("origin/%s", baseBranch), fmt.Sprintf("origin/%s", headBranch), "--", "."}
 	if len(patterns) > 0 {
 		var args []string
 		for _, pattern := range patterns {
@@ -90,8 +90,10 @@ func GetGitDiffOutput(baseBranch string, headBranch string, reviewIgnorePath str
 				args = append(args, fmt.Sprintf("':!%s'", pattern))
 			}
 		}
-		cmd.Args = append(cmd.Args, args...)
+		cmdArgs = append(cmdArgs, args...)
 	}
+	fmt.Println(strings.Join(cmdArgs, " "))
+	cmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
