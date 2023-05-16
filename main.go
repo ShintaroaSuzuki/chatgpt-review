@@ -225,7 +225,7 @@ func main() {
 
 	reviewIgnorePath := os.Getenv("INPUT_REVIEW_IGNORE_PATH")
 	if reviewIgnorePath == "" {
-		reviewIgnorePath = ".review-ignore"
+		reviewIgnorePath = ".reviewignore"
 	}
 
 	diff, err := GetGitDiffOutput(baseBranch, headBranch, reviewIgnorePath)
